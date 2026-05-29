@@ -55,7 +55,7 @@ class Loader {
         if (!file_exists($file)) {
 
             throw new \Exception(
-                "View '$view' tidak ditemukan"
+                "View '$view' not found"
             );
         }
 
@@ -131,7 +131,7 @@ class Loader {
         if (!class_exists($class)) {
 
             throw new \Exception(
-                "Model '$class' tidak ditemukan"
+                "Model '$class' not found"
             );
         }
 
@@ -215,7 +215,7 @@ class Loader {
         if (!class_exists($class)) {
 
             throw new \Exception(
-                "Library '$class' tidak ditemukan"
+                "Library '$class' not found"
             );
         }
 
@@ -283,7 +283,7 @@ class Loader {
         if (!file_exists($file)) {
 
             throw new \Exception(
-                "Helper '$helper' tidak ditemukan"
+                "Helper '$helper' not found"
             );
         }
 
@@ -340,7 +340,7 @@ class Loader {
         if (!class_exists($class)) {
 
             throw new \Exception(
-                "Config '$class' tidak ditemukan"
+                "Config '$class' not found"
             );
         }
 
@@ -409,7 +409,7 @@ class Loader {
         ) {
 
             throw new \Exception(
-                "Database connection '$key' tidak ditemukan"
+                "Database connection '$key' not found"
             );
         }
 
@@ -454,7 +454,7 @@ class Loader {
             if (!class_exists($class)) {
 
                 throw new \Exception(
-                    "Database class '$class' tidak ditemukan"
+                    "Library Database '$class' not found"
                 );
             }
 

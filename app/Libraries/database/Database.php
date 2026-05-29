@@ -68,7 +68,7 @@ class Database extends Ars {
         ) {
 
             throw new Exception(
-                "Database connection '$connection' tidak ditemukan"
+                "Database connection '$connection' not found"
             );
         }
 
@@ -124,7 +124,7 @@ class Database extends Ars {
             default:
 
                 throw new Exception(
-                    "Driver '{$this->driver}' tidak didukung"
+                    "Driver '{$this->driver}' not supported"
                 );
         }
 

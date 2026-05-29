@@ -16,7 +16,7 @@ trait Utility {
         if ($this->driver !== 'mysql') {
 
             throw new \Exception(
-                "Backup database hanya support MySQL"
+                "Backup no supported"
             );
         }
 
@@ -151,7 +151,7 @@ trait Utility {
             default:
 
                 throw new \Exception(
-                    "Driver '{$this->driver}' tidak didukung"
+                    "Driver '{$this->driver}' no supported"
                 );
         }
 
@@ -208,7 +208,7 @@ trait Utility {
             default:
 
                 throw new \Exception(
-                    "Driver '{$this->driver}' tidak didukung"
+                    "Driver '{$this->driver}' not supported"
                 );
         }
 
@@ -288,7 +288,7 @@ trait Utility {
             default:
 
                 throw new \Exception(
-                    "Driver '{$this->driver}' tidak didukung"
+                    "Driver '{$this->driver}' not supported"
                 );
         }
 
@@ -319,19 +319,19 @@ trait Utility {
             case "pgsql":
 
                 throw new \Exception(
-                    "PostgreSQL tidak support REPAIR TABLE"
+                    "PostgreSQL no support REPAIR TABLE"
                 );
 
             case "sqlite":
 
                 throw new \Exception(
-                    "SQLite tidak support REPAIR TABLE"
+                    "SQLite no support REPAIR TABLE"
                 );
 
             default:
 
                 throw new \Exception(
-                    "Driver '{$this->driver}' tidak didukung"
+                    "Driver '{$this->driver}' not supported"
                 );
         }
 

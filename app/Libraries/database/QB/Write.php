@@ -176,7 +176,7 @@ trait Write {
     }
     public function update_batch($index = "",$table = "",$set = []) {
         if (empty($index)) {
-        throw new \Exception('Index untuk update batch wajib diisi');
+        throw new \Exception('Index is require');
         }
         /*
         |--------------------------------------------------------------------------

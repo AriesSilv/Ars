@@ -396,7 +396,7 @@ trait Compile {
         if (empty($this->set)) {
 
             throw new \Exception(
-                'INSERT membutuhkan data'
+                'INSERT requires data'
             );
         }
 
@@ -472,14 +472,14 @@ trait Compile {
         if (empty($this->set)) {
 
             throw new \Exception(
-                'UPDATE tanpa SET'
+                'UPDATE requires data'
             );
         }
 
         if (empty($this->where)) {
 
             throw new \Exception(
-                'UPDATE tanpa WHERE berbahaya'
+                'UPDATE statements without WHERE are not allowed'
             );
         }
 
@@ -549,7 +549,7 @@ trait Compile {
         if (empty($this->set)) {
     
             throw new \Exception(
-                'UPDATE BATCH tanpa data'
+                'UPDATE BATCH requires data'
             );
         }
 
@@ -562,7 +562,7 @@ trait Compile {
         if ($index === '') {
     
             throw new \Exception(
-                'UPDATE BATCH membutuhkan index'
+                'UPDATE BATCH requires index'
             );
         }
     
@@ -599,7 +599,7 @@ trait Compile {
             );
         if (empty($fields)) {
             throw new \Exception(
-                'Tidak ada kolom untuk diupdate'
+                'No columns to update'
             );
         }
         /*
@@ -621,7 +621,7 @@ trait Compile {
                 if (!isset($row[$index])) {
     
                     throw new \Exception(
-                        "Index '{$index}' wajib ada"
+                        "Index '{$index}' is require"
                     );
                 }
     
@@ -702,7 +702,7 @@ trait Compile {
         if (empty($this->where)) {
 
             throw new \Exception(
-                'DELETE tanpa WHERE berbahaya'
+                'DELETE statements without WHERE are not allowed'
             );
         }
 
@@ -787,7 +787,7 @@ trait Compile {
         if (empty($this->set)) {
 
             throw new \Exception(
-                'REPLACE membutuhkan data'
+                'REPLACE requires data'
             );
         }
 
@@ -869,7 +869,7 @@ trait Compile {
         */
 
         throw new \Exception(
-            'REPLACE tidak didukung PostgreSQL'
+            'REPLACE not supported'
         );
     }
 
