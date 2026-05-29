@@ -1,5 +1,6 @@
 <?php
 namespace Ars\Libraries\Database\QB;
+
 trait Having {
 
     /*
@@ -67,7 +68,6 @@ trait Having {
                     $v,
                     $boolean
                 );
-
             }
 
             return $this;
@@ -95,20 +95,38 @@ trait Having {
         |--------------------------------------------------------------------------
         */
 
+        $field =
+            trim($key);
+
+        $operator = '=';
+
         if (
             preg_match(
-                '/(>=|<=|!=|<>|>|<|LIKE)$/i',
-                trim($key)
+                '/^(.+?)\s*(>=|<=|!=|<>|>|<|LIKE)$/i',
+                trim($key),
+                $match
             )
         ) {
 
-            $field = $key;
+            $field =
+                trim($match[1]);
 
-        } else {
-
-            $field = "`{$key}` =";
-
+            $operator =
+                strtoupper(
+                    trim($match[2])
+                );
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | FIELD
+        |--------------------------------------------------------------------------
+        */
+
+        $fieldProtected =
+            $this->protect_identifier(
+                $field
+            );
 
         /*
         |--------------------------------------------------------------------------
@@ -118,10 +136,10 @@ trait Having {
 
         $param =
             'having_' .
-            str_replace(
-                ['.', ' '],
+            preg_replace(
+                '/[^a-zA-Z0-9_]/',
                 '_',
-                $key
+                $field
             ) .
             count($this->bindings);
 
@@ -131,12 +149,22 @@ trait Having {
         |--------------------------------------------------------------------------
         */
 
+        $condition =
+            "{$fieldProtected} {$operator} :{$param}";
+
         $this->addHaving(
-            "{$field} :{$param}",
+            $condition,
             $boolean
         );
 
-        $this->bindings[$param] = $value;
+        /*
+        |--------------------------------------------------------------------------
+        | BINDING
+        |--------------------------------------------------------------------------
+        */
+
+        $this->bindings[$param] =
+            $value;
 
         return $this;
     }
@@ -152,15 +180,28 @@ trait Having {
         $boolean
     ){
 
+        /*
+        |--------------------------------------------------------------------------
+        | FIRST CONDITION
+        |--------------------------------------------------------------------------
+        */
+
         if (empty($this->having)) {
 
-            $this->having[] = $condition;
-
-        } else {
-
             $this->having[] =
-                "{$boolean} {$condition}";
+                $condition;
+
+            return $this;
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | NORMAL
+        |--------------------------------------------------------------------------
+        */
+
+        $this->having[] =
+            "{$boolean} {$condition}";
 
         return $this;
     }

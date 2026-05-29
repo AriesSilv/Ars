@@ -1,5 +1,6 @@
 <?php
 namespace Ars\Libraries\Database\QB;
+
 trait Group {
 
     /*
@@ -13,38 +14,64 @@ trait Group {
         $not = false
     ){
 
-        $condition = '';
-
         /*
         |--------------------------------------------------------------------------
-        | PREFIX
+        | FIRST GROUP
         |--------------------------------------------------------------------------
         */
 
-        if (!empty($this->where)) {
+        if (empty($this->where)) {
 
-            $condition .= "{$prefix} ";
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | NOT GROUP
-        |--------------------------------------------------------------------------
-        */
-
-        if ($not) {
-
-            $condition .= "NOT (";
+            $condition =
+                $not
+                ? 'NOT ('
+                : '(';
 
         } else {
 
-            $condition .= "(";
+            /*
+            |--------------------------------------------------------------------------
+            | AFTER OPEN GROUP
+            |--------------------------------------------------------------------------
+            */
 
+            $last =
+                end($this->where);
+
+            if (
+                $last === '('
+                || $last === 'NOT ('
+                || str_ends_with(
+                    trim($last),
+                    '('
+                )
+            ) {
+
+                $condition =
+                    $not
+                    ? 'NOT ('
+                    : '(';
+
+            } else {
+
+                $condition =
+                    $not
+                    ? "{$prefix} NOT ("
+                    : "{$prefix} (";
+            }
         }
 
-        $this->where[] = trim($condition);
+        /*
+        |--------------------------------------------------------------------------
+        | PUSH GROUP
+        |--------------------------------------------------------------------------
+        */
 
-        $this->groupStack[] = '(';
+        $this->where[] =
+            trim($condition);
+
+        $this->groupStack[] =
+            '(';
 
         return $this;
     }
@@ -115,7 +142,7 @@ trait Group {
 
         if (!empty($this->groupStack)) {
 
-            $this->where[] = ")";
+            $this->where[] = ')';
 
             array_pop($this->groupStack);
         }

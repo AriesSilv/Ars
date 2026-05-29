@@ -3,7 +3,7 @@ namespace Ars\Libraries\Database\QB;
 
 use PDO;
 
-trait Query_Builder  {
+trait Query_builder  {
 
     /*
     |--------------------------------------------------------------------------
@@ -22,7 +22,6 @@ trait Query_Builder  {
     use Get;
     use Result;
     use Write;
-    use Batch;
     use Cache;
     use Prefix;
     use Transaction;
@@ -38,11 +37,9 @@ trait Query_Builder  {
 
     protected $table;
 
-    protected $select = '*';
+    protected $select = [];
 
     protected $distinct = false;
-
-    protected $from = '';
 
     protected $where = [];
 
@@ -63,6 +60,10 @@ trait Query_Builder  {
     protected $limit = '';
 
     protected $offset = '';
+    
+    protected $resultMode = 'buffered';
+    protected $lastQuery = '';
+    protected $queryType = 'read';
 
     /*
     |--------------------------------------------------------------------------
@@ -118,13 +119,61 @@ trait Query_Builder  {
     */
 
     public function query($query){
-
-        $this->free_result();
-
-        $this->stmt =
+    
+        $this->reset_result();
+    
+        /*
+        |--------------------------------------------------------------------------
+        | QUERY TYPE
+        |--------------------------------------------------------------------------
+        */
+    
+        $sqlType =
+            strtoupper(
+                strtok(
+                    trim($query),
+                    ' '
+                )
+            );
+    
+        $this->queryType =
+            in_array(
+                $sqlType,
+                ['SELECT', 'SHOW']
+            )
+            ? 'read'
+            : 'write';
+    
+        /*
+        |--------------------------------------------------------------------------
+        | PREPARE
+        |--------------------------------------------------------------------------
+        */
+    
+        $stmt =
             $this->dbh->prepare($query);
-
+    
+        if (!$stmt) {
+    
+            throw new \RuntimeException(
+                'Failed to prepare query'
+            );
+        }
+    
+        $this->stmt = $stmt;
+    
+        $this->lastQuery = $query;
+    
         return $this;
+    }
+    /*
+    |--------------------------------------------------------------------------
+    | LAST QUERY
+    |--------------------------------------------------------------------------
+    */
+    
+    public function last_query(){
+        return $this->lastQuery;
     }
 
     /*
@@ -138,50 +187,57 @@ trait Query_Builder  {
         $value,
         $type = null
     ){
-
+    
+        if (!is_string($param) || $param === '') {
+    
+            throw new \InvalidArgumentException(
+                'Invalid parameter bind'
+            );
+        }
+    
         if (is_null($type)) {
-
+    
             switch (true) {
-
+    
                 case is_int($value):
-
+    
                     $type = PDO::PARAM_INT;
                     break;
-
+    
                 case is_bool($value):
-
+    
                     $type = PDO::PARAM_BOOL;
                     break;
-
+    
                 case is_null($value):
-
+    
                     $type = PDO::PARAM_NULL;
                     break;
-
+    
                 default:
-
+    
                     $type = PDO::PARAM_STR;
                     break;
             }
         }
-
+    
         /*
         |--------------------------------------------------------------------------
         | AUTO :
         |--------------------------------------------------------------------------
         */
-
-        if ($param[0] !== ':') {
-
+    
+        if (!str_starts_with($param, ':')) {
+    
             $param = ":{$param}";
         }
-
+    
         $this->stmt->bindValue(
             $param,
             $value,
             $type
         );
-
+    
         return $this;
     }
 
@@ -193,18 +249,10 @@ trait Query_Builder  {
 
     public function execute(){
 
+        if (!$this->stmt) {
+            return false;
+        }
         return $this->stmt->execute();
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | ROW COUNT
-    |--------------------------------------------------------------------------
-    */
-
-    public function rowCount(){
-
-        return $this->stmt->rowCount();
     }
 
     /*
@@ -217,90 +265,55 @@ trait Query_Builder  {
 
         return $this->dbh->lastInsertId();
     }
-
     /*
     |--------------------------------------------------------------------------
-    | CLOSE CONNECTION
+    | FREE RESULT
     |--------------------------------------------------------------------------
     */
 
-    public function close(){
+    public function reset_result(){
 
-        $this->stmt = null;
-
-        $this->dbh = null;
+        $this->resultCache = null;
+        $this->resultIndex = 0;
+        $this->resultMode = 'buffered';
+        return $this;
     }
-
     /*
     |--------------------------------------------------------------------------
     | RESET QUERY BUILDER
     |--------------------------------------------------------------------------
     */
 
-    public function resetQB(){
-
-        /*
-        |--------------------------------------------------------------------------
-        | TABLE
-        |--------------------------------------------------------------------------
-        */
-
+    public function reset_qb(){
+    
         $this->table = null;
-
-        /*
-        |--------------------------------------------------------------------------
-        | SELECT
-        |--------------------------------------------------------------------------
-        */
-
-        $this->select = '*';
-
+    
+        $this->select = ["*"];
+    
         $this->distinct = false;
-
-        $this->from = '';
-
-        /*
-        |--------------------------------------------------------------------------
-        | QUERY PARTS
-        |--------------------------------------------------------------------------
-        */
-
+    
         $this->where = [];
-
+    
         $this->join = [];
-
+    
         $this->set = [];
-
+    
         $this->bindings = [];
-
+    
         $this->groupBy = [];
-
+    
         $this->having = [];
-
+    
         $this->groupStack = [];
-
-        /*
-        |--------------------------------------------------------------------------
-        | ORDER / LIMIT
-        |--------------------------------------------------------------------------
-        */
-
+    
         $this->order = '';
-
+    
         $this->limit = '';
-
+    
         $this->offset = '';
-
-        /*
-        |--------------------------------------------------------------------------
-        | RESULT CACHE
-        |--------------------------------------------------------------------------
-        */
-
-        $this->resultCache = null;
-
-        $this->resultIndex = 0;
-
+    
+        $this->queryType = 'read';
+    
         return $this;
     }
 

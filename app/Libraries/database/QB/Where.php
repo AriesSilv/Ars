@@ -1,5 +1,6 @@
 <?php
 namespace Ars\Libraries\Database\QB;
+
 trait Where {
 
     /*
@@ -13,15 +14,49 @@ trait Where {
         $boolean = 'AND'
     ){
 
+        /*
+        |--------------------------------------------------------------------------
+        | FIRST CONDITION
+        |--------------------------------------------------------------------------
+        */
+
         if (empty($this->where)) {
 
             $this->where[] = $condition;
 
-        } else {
-
-            $this->where[] =
-                "{$boolean} {$condition}";
+            return $this;
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | AFTER GROUP START
+        |--------------------------------------------------------------------------
+        */
+
+        $last =
+            end($this->where);
+
+        if (
+            $last === '('
+            || str_ends_with(
+                trim($last),
+                '('
+            )
+        ) {
+
+            $this->where[] = $condition;
+
+            return $this;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | NORMAL
+        |--------------------------------------------------------------------------
+        */
+
+        $this->where[] =
+            "{$boolean} {$condition}";
 
         return $this;
     }
@@ -95,7 +130,6 @@ trait Where {
                     $boolean,
                     $escape
                 );
-
             }
 
             return $this;
@@ -123,20 +157,38 @@ trait Where {
         |--------------------------------------------------------------------------
         */
 
+        $field =
+            trim($key);
+
+        $operator = '=';
+
         if (
             preg_match(
-                '/(>=|<=|!=|<>|>|<|LIKE)$/i',
-                trim($key)
+                '/^(.+?)\s*(>=|<=|!=|<>|>|<|LIKE)$/i',
+                trim($key),
+                $match
             )
         ) {
 
-            $field = $key;
+            $field =
+                trim($match[1]);
 
-        } else {
-
-            $field = "`{$key}` =";
-
+            $operator =
+                strtoupper(
+                    trim($match[2])
+                );
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | FIELD
+        |--------------------------------------------------------------------------
+        */
+
+        $fieldProtected =
+            $this->protect_identifier(
+                $field
+            );
 
         /*
         |--------------------------------------------------------------------------
@@ -146,10 +198,10 @@ trait Where {
 
         $param =
             'where_' .
-            str_replace(
-                ['.', ' '],
+            preg_replace(
+                '/[^a-zA-Z0-9_]/',
                 '_',
-                $key
+                $field
             ) .
             count($this->bindings);
 
@@ -159,8 +211,11 @@ trait Where {
         |--------------------------------------------------------------------------
         */
 
+        $condition =
+            "{$fieldProtected} {$operator} :{$param}";
+
         $this->addWhere(
-            "{$field} :{$param}",
+            $condition,
             $boolean
         );
 
@@ -170,7 +225,8 @@ trait Where {
         |--------------------------------------------------------------------------
         */
 
-        $this->bindings[$param] = $value;
+        $this->bindings[$param] =
+            $value;
 
         return $this;
     }
@@ -276,20 +332,32 @@ trait Where {
             return $this;
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | PARAMS
+        |--------------------------------------------------------------------------
+        */
+
         $params = [];
 
         foreach ($values as $i => $val) {
 
             $param =
                 'wherein_' .
-                $key .
+                preg_replace(
+                    '/[^a-zA-Z0-9_]/',
+                    '_',
+                    $key
+                ) .
                 '_' .
                 count($this->bindings) .
                 "_{$i}";
 
-            $params[] = ":{$param}";
+            $params[] =
+                ":{$param}";
 
-            $this->bindings[$param] = $val;
+            $this->bindings[$param] =
+                $val;
         }
 
         /*
@@ -305,14 +373,25 @@ trait Where {
 
         /*
         |--------------------------------------------------------------------------
+        | FIELD
+        |--------------------------------------------------------------------------
+        */
+
+        $field =
+            $this->protect_identifier(
+                $key
+            );
+
+        /*
+        |--------------------------------------------------------------------------
         | CONDITION
         |--------------------------------------------------------------------------
         */
 
         $condition =
-            "`{$key}` {$operator} ("
-            . implode(",", $params)
-            . ")";
+            "{$field} {$operator} ("
+            . implode(', ', $params)
+            . ')';
 
         $this->addWhere(
             $condition,
@@ -321,5 +400,4 @@ trait Where {
 
         return $this;
     }
-
 }

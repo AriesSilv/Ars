@@ -1,5 +1,6 @@
 <?php
 namespace Ars\Libraries\Database\QB;
+
 trait Select {
 
     /*
@@ -13,16 +14,93 @@ trait Select {
         $escape = null
     ){
 
+        /*
+        |--------------------------------------------------------------------------
+        | ARRAY
+        |--------------------------------------------------------------------------
+        */
+
         if (is_array($select)) {
 
-            $this->select =
-                implode(",", $select);
+            foreach ($select as $field) {
+
+                $field = trim($field);
+
+                if ($field === '') {
+                    continue;
+                }
+
+                $this->select[] = $field;
+            }
 
         } else {
 
-            $this->select =
-                trim($select);
+            $select = trim($select);
+
+            if ($select !== '') {
+
+                /*
+                |--------------------------------------------------------------------------
+                | MULTI STRING
+                |--------------------------------------------------------------------------
+                */
+
+                if (str_contains($select, ',')) {
+
+                    $parts =
+                        array_map(
+                            'trim',
+                            explode(',', $select)
+                        );
+
+                    foreach ($parts as $field) {
+
+                        if ($field === '') {
+                            continue;
+                        }
+
+                        $this->select[] =
+                            $field;
+                    }
+
+                } else {
+
+                    $this->select[] =
+                        $select;
+                }
+            }
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | REMOVE DEFAULT *
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            count($this->select) > 1
+            && in_array('*', $this->select)
+        ) {
+
+            $this->select =
+                array_values(
+                    array_filter(
+                        $this->select,
+                        fn($v) => $v !== '*'
+                    )
+                );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | UNIQUE
+        |--------------------------------------------------------------------------
+        */
+
+        $this->select =
+            array_values(
+                array_unique($this->select)
+            );
 
         return $this;
     }
@@ -40,13 +118,48 @@ trait Select {
     ){
 
         $func =
-            strtoupper(trim($func));
+            strtoupper(
+                trim($func)
+            );
 
         $alias =
-            $alias ?: $field;
+            trim(
+                $alias ?: "{$field}_{$func}"
+            );
 
-        $this->select =
-            "{$func}({$field}) AS `{$alias}`";
+        /*
+        |--------------------------------------------------------------------------
+        | REMOVE DEFAULT *
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            count($this->select) === 1
+            && $this->select[0] === '*'
+        ) {
+
+            $this->select = [];
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | FIELD
+        |--------------------------------------------------------------------------
+        */
+
+        $fieldProtected =
+            $this->protect_identifier(
+                $field
+            );
+
+        /*
+        |--------------------------------------------------------------------------
+        | SELECT
+        |--------------------------------------------------------------------------
+        */
+
+        $this->select[] =
+            "{$func}({$fieldProtected}) AS `{$alias}`";
 
         return $this;
     }
@@ -141,41 +254,88 @@ trait Select {
 
     /*
     |--------------------------------------------------------------------------
-    | FROM
+    | TABLE
     |--------------------------------------------------------------------------
     */
 
-    public function from($table){
-
-        $this->from =
-            trim($table);
+    public function table($table){
 
         $this->table =
             trim($table);
 
         return $this;
     }
+
     /*
-|--------------------------------------------------------------------------
-| GROUP BY
-|--------------------------------------------------------------------------
-*/
+    |--------------------------------------------------------------------------
+    | GROUP BY
+    |--------------------------------------------------------------------------
+    */
 
-public function group_by($group){
+    public function group_by($group){
 
-    if (is_array($group)) {
+        if (is_array($group)) {
 
-        foreach ($group as $g) {
+            foreach ($group as $g) {
 
-            $this->groupBy[] = trim($g);
+                $g = trim($g);
+
+                if ($g === '') {
+                    continue;
+                }
+
+                $this->groupBy[] = $g;
+            }
+
+        } else {
+
+            $group = trim($group);
+
+            if ($group !== '') {
+
+                /*
+                |--------------------------------------------------------------------------
+                | MULTI GROUP
+                |--------------------------------------------------------------------------
+                */
+
+                if (str_contains($group, ',')) {
+
+                    $parts =
+                        array_map(
+                            'trim',
+                            explode(',', $group)
+                        );
+
+                    foreach ($parts as $g) {
+
+                        if ($g === '') {
+                            continue;
+                        }
+
+                        $this->groupBy[] = $g;
+                    }
+
+                } else {
+
+                    $this->groupBy[] =
+                        $group;
+                }
+            }
         }
 
-    } else {
+        /*
+        |--------------------------------------------------------------------------
+        | UNIQUE
+        |--------------------------------------------------------------------------
+        */
 
-        $this->groupBy[] = trim($group);
+        $this->groupBy =
+            array_values(
+                array_unique($this->groupBy)
+            );
+
+        return $this;
     }
-
-    return $this;
-}
 
 }

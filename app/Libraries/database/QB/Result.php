@@ -9,55 +9,21 @@ trait Result {
     */
 
     public function result(
-        $type = 'object'
-    ){
+    $type = 'object'){
 
-        $data =
-            $this->fetchAll();
-
-        /*
-        |--------------------------------------------------------------------------
-        | ARRAY
-        |--------------------------------------------------------------------------
-        */
-
-        if ($type === 'array') {
-
-            return $data;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | CUSTOM CLASS
-        |--------------------------------------------------------------------------
-        */
-
-        if (
-            is_string($type)
-            &&
-            class_exists($type)
-        ) {
-
-            return $this->mapToClass(
-                $data,
-                $type
-            );
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | OBJECT
-        |--------------------------------------------------------------------------
-        */
-
+        $data = $this->fetchAll();
+    
         $result = [];
-
+    
         foreach ($data as $row) {
-
+    
             $result[] =
-                (object) $row;
+                $this->convertType(
+                    $row,
+                    $type
+                );
         }
-
+    
         return $result;
     }
 
@@ -72,16 +38,7 @@ trait Result {
         return $this->result('array');
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | RESULT OBJECT
-    |--------------------------------------------------------------------------
-    */
 
-    public function result_object(){
-
-        return $this->result('object');
-    }
 
     /*
     |--------------------------------------------------------------------------
@@ -108,55 +65,42 @@ trait Result {
         $n = 0,
         $type = 'object'
     ){
-
-        $data =
-            $this->fetchAll();
-
+    
+        $data = $this->fetchAll();
+    
         if (!isset($data[$n])) {
-
             return null;
         }
+    
+        return $this->convertType(
+            $data[$n],
+            $type
+        );
+    }
+    /*
+    |--------------------------------------------------------------------------
+    | ROW ARRAY
+    |--------------------------------------------------------------------------
+    */
 
-        $row =
-            $data[$n];
+    public function row_array(){
 
-        /*
-        |--------------------------------------------------------------------------
-        | ARRAY
-        |--------------------------------------------------------------------------
-        */
+        return $this->row(0,'array');
+    }
+    
+    /*
+    |--------------------------------------------------------------------------
+    | CUSTOM ROW OBJECT
+    |--------------------------------------------------------------------------
+    */
 
-        if ($type === 'array') {
+    public function custom_row_object(
+        $class_name
+    ){
 
-            return $row;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | CUSTOM CLASS
-        |--------------------------------------------------------------------------
-        */
-
-        if (
-            is_string($type)
-            &&
-            class_exists($type)
-        ) {
-
-            return $this->mapSingleToClass(
-                $row,
-                $type
-            );
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | OBJECT
-        |--------------------------------------------------------------------------
-        */
-
-        return (object)
-            $row;
+        return $this->row(
+            0,$class_name
+        );
     }
 
     /*
@@ -168,69 +112,79 @@ trait Result {
     public function unbuffered_row(
         $type = 'object'
     ){
-
-        $row =
-            $this->stmt->fetch(
-                PDO::FETCH_ASSOC
-            );
-
-        if (!$row) {
-
+    
+        if (!$this->stmt) {
             return null;
         }
-
+    
+        if ($this->resultCache !== null) {
+    
+            throw new \Exception(
+                'Cannot use unbuffered_row() after buffered result'
+            );
+        }
+    
+        $this->resultMode = 'unbuffered';
+    
+        $row =
+            $this->stmt->fetch(
+                \PDO::FETCH_ASSOC
+            );
+    
+        if (!$row) {
+            return null;
+        }
+    
         return $this->convertType(
             $row,
             $type
         );
     }
-
+    
     /*
     |--------------------------------------------------------------------------
-    | ROW ARRAY
+    | num_rows
     |--------------------------------------------------------------------------
     */
 
-    public function row_array(
-        $n = 0
-    ){
+    public function num_rows(){
 
-        return $this->row(
-            $n,
-            'array'
-        );
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | ROW OBJECT
-    |--------------------------------------------------------------------------
-    */
-
-    public function row_object(
-        $n = 0
-    ){
-
-        return $this->row(
-            $n,
-            'object'
-        );
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | CUSTOM ROW OBJECT
-    |--------------------------------------------------------------------------
-    */
-
-    public function custom_row_object(
-        $n,
-        $type
-    ){
-
-        return $this->row(
-            $n,
-            $type
+        if (!$this->stmt) {
+            return 0;
+        }
+    
+        /*
+        |--------------------------------------------------------------------------
+        | WRITE QUERY
+        |--------------------------------------------------------------------------
+        */
+    
+        if ($this->queryType === 'write') {
+    
+            return $this->stmt->rowCount();
+        }
+    
+        /*
+        |--------------------------------------------------------------------------
+        | UNBUFFERED
+        |--------------------------------------------------------------------------
+        */
+    
+        if ($this->resultMode === 'unbuffered') {
+    
+            throw new \Exception(
+                'num_rows() unavailable in unbuffered mode'
+            );
+        }
+    
+        /*
+        |--------------------------------------------------------------------------
+        | BUFFERED SELECT
+        |--------------------------------------------------------------------------
+        */
+    
+        return count(
+            $this->fetchAll()
         );
     }
 
@@ -243,7 +197,11 @@ trait Result {
     public function data_seek(
         $n = 0
     ){
-
+        if ($this->resultMode === 'unbuffered') {
+            throw new \Exception(
+            "data_seek() unavailable in unbuffered mode"
+        );
+        }
         $this->resultIndex =
             (int) $n;
 
@@ -252,11 +210,11 @@ trait Result {
 
     /*
     |--------------------------------------------------------------------------
-    | SET ROW
+    | UPDATE ROW CACHE
     |--------------------------------------------------------------------------
     */
 
-    public function set_row(
+    public function update_row_cache(
         $key,
         $value = null
     ){
@@ -301,7 +259,12 @@ trait Result {
     public function next_row(
         $type = 'object'
     ){
-
+        if ($this->resultMode === 'unbuffered') {
+            throw new \Exception(
+        "next_row() unavailable in unbuffered mode"
+        );
+        }
+        
         $this->resultIndex++;
 
         return $this->row(
@@ -316,10 +279,15 @@ trait Result {
     |--------------------------------------------------------------------------
     */
 
-    public function previous_row(
+    public function prev_row(
         $type = 'object'
     ){
-
+        if ($this->resultMode === 'unbuffered') {
+            throw new \Exception(
+                "prev_row() unavailable in unbuffered mode"
+            );
+        }
+        
         if ($this->resultIndex > 0) {
 
             $this->resultIndex--;
@@ -340,7 +308,11 @@ trait Result {
     public function first_row(
         $type = 'object'
     ){
-
+        if ($this->resultMode === 'unbuffered') {
+            throw new \Exception(
+                "first_row() unavailable in unbuffered mode"
+            );
+        }
         return $this->row(
             0,
             $type
@@ -353,35 +325,31 @@ trait Result {
     |--------------------------------------------------------------------------
     */
 
-    public function last_row(
+     public function last_row(
         $type = 'object'
     ){
-
-        $data =
-            $this->fetchAll();
-
+    
+        if ($this->resultMode === 'unbuffered') {
+    
+            throw new \Exception(
+                "last_row() unavailable in unbuffered mode"
+            );
+        }
+    
+        $data = $this->fetchAll();
+    
+        if (empty($data)) {
+            return null;
+        }
+    
         $index =
             count($data) - 1;
-
+    
         return $this->row(
             $index,
             $type
         );
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | NUM ROWS
-    |--------------------------------------------------------------------------
-    */
-
-    public function num_rows(){
-
-        return count(
-            $this->fetchAll()
-        );
-    }
-
     /*
     |--------------------------------------------------------------------------
     | NUM FIELDS
@@ -389,7 +357,9 @@ trait Result {
     */
 
     public function num_fields(){
-
+        if (!$this->stmt) {
+            return 0;
+        }
         return $this->stmt->columnCount();
     }
 
@@ -400,75 +370,46 @@ trait Result {
     */
 
     public function field_data(){
-
+    
         $fields = [];
-
+    
+        if (!$this->stmt) {
+            return $fields;
+        }
+    
         $count =
             $this->stmt->columnCount();
-
+    
         for ($i = 0; $i < $count; $i++) {
-
+    
             $meta =
                 $this->stmt->getColumnMeta($i);
-
-            $obj = new stdClass;
-
+    
+            if (!$meta) {
+                continue;
+            }
+    
+            $obj = new \stdClass;
+    
             $obj->name =
                 $meta['name'] ?? '';
-
+    
             $obj->type =
                 $meta['native_type'] ?? '';
-
+    
             $obj->max_length =
                 $meta['len'] ?? null;
-
+    
             $obj->primary_key = false;
-
+    
             $obj->default = null;
-
+    
             $fields[] = $obj;
         }
-
+    
         return $fields;
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | LIST FIELDS
-    |--------------------------------------------------------------------------
-    */
-
-    public function list_fields(){
-
-        $fields = [];
-
-        $count =
-            $this->stmt->columnCount();
-
-        for ($i = 0; $i < $count; $i++) {
-
-            $meta =
-                $this->stmt->getColumnMeta($i);
-
-            $fields[] =
-                $meta['name'] ?? '';
-        }
-
-        return $fields;
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | FREE RESULT
-    |--------------------------------------------------------------------------
-    */
-
-    public function free_result(){
-
-        $this->resultCache = null;
-
-        return $this;
-    }
 
     /*
     |--------------------------------------------------------------------------
@@ -478,14 +419,35 @@ trait Result {
 
     private function fetchAll(){
 
-        if ($this->resultCache === null) {
-
-            $this->resultCache =
-                $this->stmt->fetchAll(
-                    PDO::FETCH_ASSOC
-                );
+        if (!$this->stmt) {
+            return [];
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | UNBUFFERED PROTECTION
+        |--------------------------------------------------------------------------
+        */
+
+        if ($this->resultMode === 'unbuffered') {
+            throw new \Exception(
+                "Cannot use fetchAll() after unbuffered_row()"
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | CACHE
+        |--------------------------------------------------------------------------
+        */
+    
+        if ($this->resultCache === null) {
+            $this->resultCache =
+                $this->stmt->fetchAll(
+                    \PDO::FETCH_ASSOC
+                );
+        }
+    
         return $this->resultCache;
     }
 
@@ -546,31 +508,6 @@ trait Result {
 
     /*
     |--------------------------------------------------------------------------
-    | MAP TO CLASS
-    |--------------------------------------------------------------------------
-    */
-
-    private function mapToClass(
-        $data,
-        $class
-    ){
-
-        $result = [];
-
-        foreach ($data as $row) {
-
-            $result[] =
-                $this->mapSingleToClass(
-                    $row,
-                    $class
-                );
-        }
-
-        return $result;
-    }
-
-    /*
-    |--------------------------------------------------------------------------
     | MAP SINGLE TO CLASS
     |--------------------------------------------------------------------------
     */
@@ -579,16 +516,28 @@ trait Result {
         $row,
         $class
     ){
-
-        $obj =
-            new $class;
-
+    
+        $obj = new $class;
+    
+        $ref =
+            new \ReflectionObject($obj);
+    
         foreach ($row as $key => $val) {
-
+    
+            if (!$ref->hasProperty($key)) {
+                continue;
+            }
+    
+            $prop =
+                $ref->getProperty($key);
+    
+            if ($prop->isReadOnly()) {
+                continue;
+            }
+    
             $obj->$key = $val;
         }
-
+    
         return $obj;
     }
-
 }

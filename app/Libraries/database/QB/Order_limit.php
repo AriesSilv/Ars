@@ -1,5 +1,6 @@
 <?php
 namespace Ars\Libraries\Database\QB;
+
 trait Order_limit {
 
     /*
@@ -14,6 +15,8 @@ trait Order_limit {
         $escape = null
     ){
 
+        $orders = [];
+
         /*
         |--------------------------------------------------------------------------
         | ARRAY ORDER
@@ -22,35 +25,46 @@ trait Order_limit {
 
         if (is_array($orderby)) {
 
-            $orders = [];
-
             foreach ($orderby as $key => $val) {
+
+                /*
+                |--------------------------------------------------------------------------
+                | RAW STRING
+                |--------------------------------------------------------------------------
+                */
 
                 if (is_numeric($key)) {
 
-                    $orders[] = $val;
-
-                } else {
-
-                    $dir = strtoupper($val);
-
-                    if (
-                        !in_array(
-                            $dir,
-                            ['ASC', 'DESC']
-                        )
-                    ) {
-                        $dir = 'ASC';
-                    }
-
                     $orders[] =
-                        "{$key} {$dir}";
-                }
-            }
+                        $this->protect_identifier(
+                            trim($val)
+                        );
 
-            $this->order =
-                "ORDER BY "
-                . implode(",", $orders);
+                    continue;
+                }
+
+                /*
+                |--------------------------------------------------------------------------
+                | FIELD + DIRECTION
+                |--------------------------------------------------------------------------
+                */
+
+                $dir =
+                    strtoupper(trim($val));
+
+                if (
+                    !in_array(
+                        $dir,
+                        ['ASC', 'DESC']
+                    )
+                ) {
+                    $dir = 'ASC';
+                }
+
+                $orders[] =
+                    $this->protect_identifier($key)
+                    . " {$dir}";
+            }
 
         } else {
 
@@ -61,7 +75,7 @@ trait Order_limit {
             */
 
             $direction =
-                strtoupper($direction);
+                strtoupper(trim($direction));
 
             if (
                 !in_array(
@@ -72,8 +86,37 @@ trait Order_limit {
                 $direction = 'ASC';
             }
 
+            $orders[] =
+                $this->protect_identifier($orderby)
+                . " {$direction}";
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | APPEND ORDER
+        |--------------------------------------------------------------------------
+        */
+
+        if (!empty($this->order)) {
+
+            $current =
+                preg_replace(
+                    '/^ORDER BY\s+/i',
+                    '',
+                    $this->order
+                );
+
             $this->order =
-                "ORDER BY {$orderby} {$direction}";
+                "ORDER BY "
+                . $current
+                . ", "
+                . implode(', ', $orders);
+
+        } else {
+
+            $this->order =
+                "ORDER BY "
+                . implode(', ', $orders);
         }
 
         return $this;
@@ -85,37 +128,16 @@ trait Order_limit {
     |--------------------------------------------------------------------------
     */
 
-    public function limit(
-        $value,
-        $offset = 0
-    ){
+    public function limit($limit, $offset = null){
 
-        $value =
-            max(0, (int) $value);
-
-        $offset =
-            max(0, (int) $offset);
-
-        /*
-        |--------------------------------------------------------------------------
-        | MYSQL LIMIT
-        |--------------------------------------------------------------------------
-        */
-
-        if ($offset > 0) {
-
-            $this->limit =
-                "LIMIT {$offset}, {$value}";
-
-        } else {
-
-            $this->limit =
-                "LIMIT {$value}";
+        $this->limit = (int) $limit;
+    
+        if ($offset !== null) {
+            $this->offset = (int) $offset;
         }
-
+    
         return $this;
     }
-
     /*
     |--------------------------------------------------------------------------
     | OFFSET
@@ -123,55 +145,9 @@ trait Order_limit {
     */
 
     public function offset($offset){
-
-        $offset =
-            max(0, (int) $offset);
-
-        /*
-        |--------------------------------------------------------------------------
-        | REBUILD LIMIT
-        |--------------------------------------------------------------------------
-        */
-
-        if (!empty($this->limit)) {
-
-            preg_match(
-                '/LIMIT\s+(\d+)(?:,\s*(\d+))?/i',
-                $this->limit,
-                $match
-            );
-
-            /*
-            |--------------------------------------------------------------------------
-            | LIMIT EXISTS
-            |--------------------------------------------------------------------------
-            */
-
-            if (isset($match[2])) {
-
-                $limitVal = $match[2];
-
-            } else {
-
-                $limitVal =
-                    $match[1] ?? 0;
-            }
-
-            $this->limit =
-                "LIMIT {$offset}, {$limitVal}";
-
-        } else {
-
-            /*
-            |--------------------------------------------------------------------------
-            | STORE OFFSET
-            |--------------------------------------------------------------------------
-            */
-
-            $this->offset =
-                "OFFSET {$offset}";
-        }
-
+    
+        $this->offset = (int) $offset;
+    
         return $this;
     }
 

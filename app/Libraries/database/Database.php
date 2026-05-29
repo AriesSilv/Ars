@@ -3,25 +3,19 @@
 namespace Ars\Libraries\Database;
 
 use Ars\Core\Ars;
-use Ars\Libraries\Database\QB\Query_Builder;
+use Ars\Libraries\Database\QB\Query_builder;
 
 use PDO;
 use PDOException;
 use Exception;
 
 class Database extends Ars {
-    use Query_Builder;
-
-    /*
-    |--------------------------------------------------------------------------
-    | CONNECTION
-    |--------------------------------------------------------------------------
-    */
+    use Query_builder;
 
     protected $dbh;
 
     protected $stmt;
-
+    protected $driver = "mysql";
     protected $config;
 
     /*
@@ -35,7 +29,6 @@ class Database extends Ars {
     ){
 
         parent::__construct();
-
         $this->connect(
             $connection
         );
@@ -53,7 +46,7 @@ class Database extends Ars {
 
         /*
         |--------------------------------------------------------------------------
-        | CONFIG
+        | config
         |--------------------------------------------------------------------------
         */
 
@@ -81,7 +74,7 @@ class Database extends Ars {
 
         /*
         |--------------------------------------------------------------------------
-        | CONNECTION CONFIG
+        | CONNECTION
         |--------------------------------------------------------------------------
         */
 
@@ -94,8 +87,10 @@ class Database extends Ars {
         |--------------------------------------------------------------------------
         */
 
-        $driver =
-            $this->config["driver"];
+        $this->driver = strtolower($this->config["driver"]);
+        if (!in_array($this->driver, PDO::getAvailableDrivers())) {
+            throw new Exception("PDO driver '{$this->driver}' belum terinstall");
+        }
 
         /*
         |--------------------------------------------------------------------------
@@ -103,7 +98,7 @@ class Database extends Ars {
         |--------------------------------------------------------------------------
         */
 
-        switch ($driver) {
+        switch ($this->driver) {
 
             case "mysql":
 
@@ -129,7 +124,7 @@ class Database extends Ars {
             default:
 
                 throw new Exception(
-                    "Driver '$driver' tidak didukung"
+                    "Driver '{$this->driver}' tidak didukung"
                 );
         }
 
@@ -156,7 +151,7 @@ class Database extends Ars {
 
         /*
         |--------------------------------------------------------------------------
-        | CONNECT
+        | configT
         |--------------------------------------------------------------------------
         */
 

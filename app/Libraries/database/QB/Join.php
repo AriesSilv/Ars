@@ -1,5 +1,6 @@
 <?php
 namespace Ars\Libraries\Database\QB;
+
 trait Join {
 
     /*
@@ -21,9 +22,10 @@ trait Join {
         |--------------------------------------------------------------------------
         */
 
-        $type = strtoupper(
-            trim($type)
-        );
+        $type =
+            strtoupper(
+                trim($type)
+            );
 
         if ($type == '') {
 
@@ -51,19 +53,69 @@ trait Join {
 
         /*
         |--------------------------------------------------------------------------
+        | TABLE
+        |--------------------------------------------------------------------------
+        */
+
+        $tableProtected =
+            $this->protect_identifier(
+                $table
+            );
+
+        /*
+        |--------------------------------------------------------------------------
+        | CONDITION
+        |--------------------------------------------------------------------------
+        */
+
+        if (!empty($condition)) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | AUTO PROTECT a=b
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                preg_match(
+                    '/^\s*([a-zA-Z0-9_\.\`]+)\s*=\s*([a-zA-Z0-9_\.\`]+)\s*$/',
+                    $condition,
+                    $match
+                )
+            ) {
+
+                $left =
+                    $this->protect_identifier(
+                        $match[1]
+                    );
+
+                $right =
+                    $this->protect_identifier(
+                        $match[2]
+                    );
+
+                $condition =
+                    "{$left} = {$right}";
+            }
+        }
+
+        /*
+        |--------------------------------------------------------------------------
         | BUILD JOIN
         |--------------------------------------------------------------------------
         */
 
         $join =
-            "{$type} JOIN `{$table}`";
+            "{$type} JOIN {$tableProtected}";
 
         if (!empty($condition)) {
 
-            $join .= " ON {$condition}";
+            $join .=
+                " ON {$condition}";
         }
 
-        $this->join[] = $join;
+        $this->join[] =
+            $join;
 
         return $this;
     }
